@@ -9,6 +9,8 @@ import java.util.stream.Collectors;
 
 import sqlancer.StateToReproduce.OracleRunReproductionState;
 import sqlancer.common.DBMSCommon;
+import sqlancer.common.genesisql.QueryPool;
+import sqlancer.common.genesisql.QueryPoolEntry;
 import sqlancer.common.oracle.CompositeTestOracle;
 import sqlancer.common.oracle.TestOracle;
 import sqlancer.common.schema.AbstractSchema;
@@ -269,5 +271,84 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
     protected boolean addRowsToAllTables(G globalState) throws Exception {
         throw new UnsupportedOperationException();
     }
+    
+    // GenisiSQL: Entry function
+ 	@Override
+ 	public void generateAndTestDatabaseWithGeneticApproach(G globalState) throws Exception {
+ 		try {
+ 			// GenesiSQL Step 1. Set up database and oracle
+ 			generateDatabase(globalState);
+ 			checkViewsAreValid(globalState);
+ 			globalState.getManager().incrementCreateDatabase();
+ 			TestOracle<G> oracle = getTestOracle(globalState);
+ 			globalState.setSuccessCaseNum(0);
+
+ 			// GenesiSQL Step 2. Initialize query pool and HashMap to track unique queries
+ 			QueryPool queryPool = oracle.initialiseQueryPool(globalState);
+ 			Long totalExecutedQueries = 0L;
+// 			queryPool.printQueryPool();
+
+ 			// Outer loop: for each generation
+ 			for (int generation = 0; generation < globalState.getOptions().getGenesisqlGenerations(); generation++) {
+ 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
+ 				queryPool.printQueryPool();
+ 				if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
+ 					break;
+ 				}
+
+ 				// Inner loop: for each query in query pool
+ 				// GenesiSQL Step 3. Fitness Evaluation (with oracle validation)
+ 				for (QueryPoolEntry entry : queryPool.getQueryPoolList()) {
+ 					if (entry.getGeneration() != generation) {
+ 						continue; // Only evaluate new queries
+ 					}
+ 					
+ 					if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
+ 						break;
+ 					}
+
+ 					try (OracleRunReproductionState localState = globalState.getState().createLocalState()) {
+ 						assert localState != null;
+ 						try {
+ 							oracle.evaluateQueryFitnessAndOracleValidation(entry, globalState);
+ 							totalExecutedQueries += 1;
+ 							globalState.getManager().incrementSelectQueryCount();
+ 							globalState.incrementSuccessCaseNum();
+ 						} catch (IgnoreMeException ignored) {
+ 						} catch (AssertionError e) {
+ 							Reproducer<G> reproducer = oracle.getLastReproducer();
+ 							if (reproducer != null) {
+ 								throw e;
+ 							}
+ 						} 
+ 						localState.executedWithoutError();
+ 					}
+ 				}
+
+ 				// GenesiSQL Step 4. Selection
+ 				int populationSize = globalState.getOptions().getGenesisqlPopulationSize();
+ 				queryPool.selectTopNQueries(populationSize);
+
+ 				// GenesiSQL Step 5. Crossover and Mutation, and Step 6. Re-insertion
+ 				// Arbitrary choice: increase population by up to 20% each generation
+ 				for (int i = 0; i < populationSize / 10; i++) {
+ 					QueryPoolEntry query1 = queryPool.getRandomQueryPoolEntry();
+ 					QueryPoolEntry mutatedQuery = oracle.mutateQuery(query1, globalState, generation + 1);
+ 					if (mutatedQuery != null) {
+ 						queryPool.addQueryPoolEntry(mutatedQuery);
+ 					}
+
+ 					QueryPoolEntry query2 = queryPool.getRandomQueryPoolEntry();
+ 					QueryPoolEntry newQuery = oracle.crossoverQueries(query1,  query2, globalState, generation + 1);
+ 					if (newQuery != null) {
+ 						queryPool.addQueryPoolEntry(newQuery);
+ 					}
+ 				}
+ 			}
+ 		} finally {
+ 			globalState.getConnection().close();
+ 		}
+ 		globalState.updateHandler(true);
+ 	}
 
 }

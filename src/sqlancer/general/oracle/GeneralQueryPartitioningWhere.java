@@ -3,13 +3,25 @@ package sqlancer.general.oracle;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import sqlancer.ComparatorHelper;
 import sqlancer.Randomly;
 import sqlancer.Reproducer;
+import sqlancer.common.ast.newast.Node;
+import sqlancer.common.ast.newast.TableReferenceNode;
+import sqlancer.common.genesisql.QueryPool;
+import sqlancer.common.genesisql.QueryPoolEntry;
+import sqlancer.common.query.ExpectedErrors;
+import sqlancer.general.GeneralErrorHandler.GeneratorNode;
 import sqlancer.general.GeneralErrors;
 import sqlancer.general.GeneralProvider.GeneralGlobalState;
+import sqlancer.general.GeneralSchema.GeneralTable;
 import sqlancer.general.GeneralToStringVisitor;
+import sqlancer.general.ast.GeneralExpression;
+import sqlancer.general.ast.GeneralJoin;
+import sqlancer.general.ast.GeneralSelect;
+import sqlancer.general.gen.GeneralRandomQuerySynthesizer;
 
 public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase {
     private Reproducer<GeneralGlobalState> reproducer;
@@ -122,4 +134,207 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
         return reproducer;
     }
 
+    @Override
+    public QueryPool initialiseQueryPool(GeneralGlobalState globalState) throws SQLException {
+        // Generate initial population of queries and add them to the global state
+        // This uses the same logic as the check() method to generate random SELECT statements
+    	QueryPool queryPool = globalState.initialiseQueryPool();
+        int populationSize = globalState.getOptions().getGenesisqlPopulationSize();
+        
+        for (int i = 0; i < populationSize; i++) {
+        	QueryPoolEntry entry = generateSelectStatement(0);
+            
+            // Regenerate if this query was already generated in this initialisation
+            int maxRetries = 10;
+            int retryCount = 0;
+            while (queryPool.hasQueryBeenGenerated(GeneralToStringVisitor.asString(entry.getFirstQuery())) && retryCount < maxRetries) {
+                entry = generateSelectStatement(0);
+                retryCount++;
+            }
+            
+            queryPool.addQueryPoolEntry(entry);
+        }
+        
+        return queryPool;
+    }
+    
+    private QueryPoolEntry generateSelectStatement(int generation) throws SQLException {
+    	s = state.getSchema();
+        targetTables = s.getRandomTableNonEmptyTables();
+        gen = GeneralRandomQuerySynthesizer.getExpressionGenerator(state, targetTables.getColumns());
+        // gen = new
+        // GeneralExpressionGenerator(state).setColumns(targetTables.getColumns());
+        initializeTernaryPredicateVariants();
+        
+        // Create the base select statement, from the base oracle class
+        select = new GeneralSelect();
+        select.setFetchColumns(generateFetchColumns());
+        List<GeneralTable> tables = targetTables.getTables();
+        List<TableReferenceNode<GeneralExpression, GeneralTable>> tableList = tables.stream()
+                .map(t -> new TableReferenceNode<GeneralExpression, GeneralTable>(t)).collect(Collectors.toList());
+        List<Node<GeneralExpression>> joins;
+        if (Randomly.getBoolean() || !state.getHandler().getOption(GeneratorNode.SUBQUERY)) {
+            joins = GeneralJoin.getJoins(tableList, state);
+        } else {
+            joins = GeneralJoin.getJoinsWithSubquery(tableList, state);
+        }
+        select.setJoinList(joins.stream().collect(Collectors.toList()));
+        select.setFromList(tableList.stream().collect(Collectors.toList()));
+        boolean orderBy = Randomly.getBooleanWithRatherLowProbability();
+        if (orderBy) {
+            select.setOrderByExpressions(gen.generateOrderBys());
+        }
+        
+        // TLP WHERE specific logic
+        // Create original query with no WHERE clause
+        GeneralSelect originalQuery = new GeneralSelect();
+        originalQuery.setFetchColumns(select.getFetchColumns());
+        originalQuery.setJoinList(select.getJoinList());
+        originalQuery.setFromList(select.getFromList());
+        originalQuery.setOrderByExpressions(select.getOrderByExpressions());
+        originalQuery.setWhereClause(null);
+        
+        // First query with predicate
+        GeneralSelect firstQuery = new GeneralSelect();
+        firstQuery.setFetchColumns(select.getFetchColumns());
+        firstQuery.setJoinList(select.getJoinList());
+        firstQuery.setFromList(select.getFromList());
+        firstQuery.setOrderByExpressions(select.getOrderByExpressions());
+        firstQuery.setWhereClause(predicate);
+        
+        // Second query with negated predicate
+        GeneralSelect secondQuery = new GeneralSelect();
+        secondQuery.setFetchColumns(select.getFetchColumns());
+        secondQuery.setJoinList(select.getJoinList());
+        secondQuery.setFromList(select.getFromList());
+        secondQuery.setOrderByExpressions(select.getOrderByExpressions());
+        secondQuery.setWhereClause(negatedPredicate);
+        
+        // Third query with null predicate
+        GeneralSelect thirdQuery = new GeneralSelect();
+        thirdQuery.setFetchColumns(select.getFetchColumns());
+        thirdQuery.setJoinList(select.getJoinList());
+        thirdQuery.setFromList(select.getFromList());
+        thirdQuery.setOrderByExpressions(select.getOrderByExpressions());
+        thirdQuery.setWhereClause(isNullPredicate);
+        
+        return new QueryPoolEntry(originalQuery, firstQuery, secondQuery, thirdQuery, orderBy, errors, 0, generation);
+    }
+
+    @Override
+    public void evaluateQueryFitnessAndOracleValidation(QueryPoolEntry entry, GeneralGlobalState globalState) throws SQLException {
+    	// Get the query strings and context from the QueryPoolEntry
+    	String originalQueryString = GeneralToStringVisitor.asString(entry.getOriginalQuery());
+    	String firstQueryString = GeneralToStringVisitor.asString(entry.getFirstQuery());
+    	String secondQueryString = GeneralToStringVisitor.asString(entry.getSecondQuery());
+    	String thirdQueryString = GeneralToStringVisitor.asString(entry.getThirdQuery());
+    	boolean orderBy = entry.hasOrderBy();
+    	ExpectedErrors errors = entry.getErrors();
+    	
+    	// Execute original query to get baseline result set
+        List<String> resultSet;
+        try {
+            resultSet = ComparatorHelper.getResultSetFirstColumnAsString(originalQueryString, errors, globalState);
+        } catch (Exception e) {
+            globalState.getHandler().appendScoreToTable(false, true);
+            throw e;
+        }
+        
+        // Execute first query and measure execution time for fitness calculation
+        List<String> firstResultSet;
+        long firstQueryExecutionTime;
+        try {
+            long startTime = System.currentTimeMillis();
+            firstResultSet = ComparatorHelper.getResultSetFirstColumnAsString(firstQueryString, errors, globalState);
+            firstQueryExecutionTime = System.currentTimeMillis() - startTime;
+        } catch (Exception e) {
+            globalState.getHandler().appendScoreToTable(false, true);
+            throw e;
+        }
+        
+        // Execute the remaining two queries for oracle validation
+        List<String> combinedString = new ArrayList<>();
+        List<String> secondResultSet;
+        try {
+            secondResultSet = ComparatorHelper.getCombinedResultSet(firstQueryString, secondQueryString,
+                    thirdQueryString, combinedString, !orderBy, globalState, errors);
+        } catch (Exception e) {
+            globalState.getHandler().appendScoreToTable(false, true);
+            throw e;
+        }
+        
+        // Validate using the oracle
+        try {
+            ComparatorHelper.assumeResultSetsAreEqual(resultSet, secondResultSet, originalQueryString, combinedString,
+                    globalState, ComparatorHelper::canonicalizeResultValue);
+        } catch (AssertionError e) {
+            globalState.getHandler().appendScoreToTable(true, true, firstQueryString);
+            reproducer = new GeneralQueryPartitioningWhereReproducer(firstQueryString, secondQueryString,
+                    thirdQueryString, originalQueryString, orderBy, e.getMessage());
+            throw e;
+        }
+        globalState.getHandler().appendScoreToTable(true, true, firstQueryString);
+        
+        // Calculate fitness score based on execution time and partitioning effectiveness
+        int fitnessScore = calculateFitnessScore(firstQueryExecutionTime, resultSet.size(), firstResultSet.size());
+        entry.setFitnessScore(fitnessScore);
+    }
+    
+    private int calculateFitnessScore(long executionTimeMs, int originalResultSetSize, int firstQueryResultSetSize) {
+    	// Vibecoded weights and calculations for now
+        // Weight factors (these can be adjusted)
+        final double EXECUTION_TIME_WEIGHT = 0.3; // Lower execution time is better
+        final double PARTITIONING_WEIGHT = 0.7; // Good partitioning is more important
+        final long MAX_ACCEPTABLE_EXECUTION_TIME_MS = 5000; // 5 seconds is considered "slow"
+        
+        // Calculate execution time score (0-100)
+        // Lower execution time = higher score
+        double executionTimeScore = 100.0 * Math.exp(-executionTimeMs / (double) MAX_ACCEPTABLE_EXECUTION_TIME_MS);
+        executionTimeScore = Math.min(100.0, Math.max(0.0, executionTimeScore));
+        
+        // Calculate partitioning effectiveness score (0-100)
+        // Best partitioning is when we get roughly 30-70% of the original result set
+        // Worst partitioning is when we get 0% or 100% (i.e., no effective filtering)
+        double partitioningScore = 0.0;
+        if (originalResultSetSize == 0) {
+            // If original query returns nothing, any first query result is bad
+            partitioningScore = 0.0;
+        } else {
+            double ratio = (double) firstQueryResultSetSize / originalResultSetSize;
+            // Score is high when ratio is between 0.3 and 0.7
+            // Score is low when ratio is close to 0 or 1
+            if (ratio <= 0.0 || ratio >= 1.0) {
+                // No partitioning or returns all results - very bad
+                partitioningScore = 0.0;
+            } else if (ratio >= 0.3 && ratio <= 0.7) {
+                // Good partitioning - score based on how close to 0.5 (optimal split)
+                double distanceFromOptimal = Math.abs(ratio - 0.5);
+                partitioningScore = 100.0 * (1.0 - (distanceFromOptimal / 0.5));
+            } else if (ratio < 0.3) {
+                // Partial but low ratio - score based on how close to 0.3
+                partitioningScore = 100.0 * (ratio / 0.3);
+            } else {
+                // Partial but high ratio - score based on how close to 0.7
+                partitioningScore = 100.0 * ((1.0 - ratio) / 0.3);
+            }
+        }
+        
+        // Combine scores with weights
+        double totalScore = (executionTimeScore * EXECUTION_TIME_WEIGHT) + 
+                           (partitioningScore * PARTITIONING_WEIGHT);
+        
+        return (int) Math.round(totalScore);
+    }
+    
+    @Override
+	public QueryPoolEntry mutateQuery(QueryPoolEntry entry, GeneralGlobalState globalState, int generation) throws Exception {
+    	// TODO
+    	return generateSelectStatement(generation);
+    }
+    
+    @Override
+    public QueryPoolEntry crossoverQueries(QueryPoolEntry entry1, QueryPoolEntry entry2, GeneralGlobalState globalState, int generation) throws Exception {
+    	// TODO
+    	return generateSelectStatement(generation);
+	}
 }

@@ -461,9 +461,11 @@ public final class Main {
                 Reproducer<G> reproducer = null;
                 if (options.enableQPG()) {
                     provider.generateAndTestDatabaseWithQueryPlanGuidance(state);
+                } else if (options.enableGenesisql()) {
+					provider.generateAndTestDatabaseWithGeneticApproach(state);
                 } else if (options.enableLearning()) {
                     reproducer = provider.generateAndTestDatabaseWithMaskTemplateLearning(state);
-                } else {
+				} else {
                     reproducer = provider.generateAndTestDatabase(state);
                 }
                 try {

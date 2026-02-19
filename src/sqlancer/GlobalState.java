@@ -1,5 +1,6 @@
 package sqlancer;
 
+import sqlancer.common.genesisql.QueryPool;
 import sqlancer.common.query.Query;
 import sqlancer.common.query.SQLancerResultSet;
 import sqlancer.common.schema.AbstractSchema;
@@ -17,6 +18,7 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
     private Main.QueryManager<C> manager;
     private String databaseName;
     private int successCaseNum;
+    private QueryPool queryPool;
 
     public void setConnection(C con) {
         this.databaseConnection = con;
@@ -93,6 +95,15 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
 
     public void setDatabaseName(String databaseName) {
         this.databaseName = databaseName;
+    }
+    
+    public QueryPool initialiseQueryPool() {
+		this.queryPool = new QueryPool();
+		return this.queryPool;
+	}
+
+    public QueryPool getQueryPool() {
+        return queryPool;
     }
 
     private ExecutionTimer executePrologue(Query<?> q) throws Exception {

@@ -57,6 +57,17 @@ public interface DatabaseProvider<G extends GlobalState<O, ?, C>, O extends DBMS
      *
      */
     Reproducer<G> generateAndTestDatabaseWithMaskTemplateLearning(G globalState) throws Exception;
+    
+	/**
+	 * The experimental feature: GenesiSQL, which uses a genetic approach to
+	 * generate test inputs.
+	 * 
+	 * @param globalState the state created and is valid for this method call.
+	 * 
+	 * @throws Exception if testing fails.
+	 * 
+	 */
+	void generateAndTestDatabaseWithGeneticApproach(G globalState) throws Exception;
 
     boolean reproduceBugFromFile(G globalState) throws Exception;
 
