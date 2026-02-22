@@ -22,6 +22,7 @@ import sqlancer.general.ast.GeneralExpression;
 import sqlancer.general.ast.GeneralJoin;
 import sqlancer.general.ast.GeneralSelect;
 import sqlancer.general.gen.GeneralRandomQuerySynthesizer;
+import sqlancer.transformations.OperatorMutationTransformation;
 
 public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase {
     private Reproducer<GeneralGlobalState> reproducer;
@@ -296,10 +297,41 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
     
     @Override
 	public QueryPoolEntry mutateQuery(QueryPoolEntry entry, GeneralGlobalState globalState, int generation) throws Exception {
-    	// TODO
-    	return generateSelectStatement(generation);
-    }
-    
+		// Create a deep copy of the first query to avoid modifying the original
+		GeneralSelect mutatedFirstQuery = deepCopySelect(entry.getFirstQuery());
+		
+		// Apply operator mutation transformation to the WHERE clause
+		OperatorMutationTransformation mutation = new OperatorMutationTransformation();
+		mutation.setSelectStatement(mutatedFirstQuery);
+		mutation.apply();
+		
+		// If mutation was successfully applied, create and return a new QueryPoolEntry
+		if (mutation.isMutationApplied()) {
+//			System.out.println("Original: " + GeneralToStringVisitor.asString(entry.getFirstQuery()) + 
+//					"\nNew:      " + GeneralToStringVisitor.asString(mutatedFirstQuery));
+			return new QueryPoolEntry(mutatedFirstQuery, entry.getErrors(), 0, generation);
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Create a deep copy of a GeneralSelect statement to avoid modifying the original.
+	 * This copies all relevant fields including fetch columns, joins, tables, order by, and WHERE clause.
+	 * 
+	 * @param original The original GeneralSelect to copy
+	 * @return A new GeneralSelect with the same structure and clauses
+	 */
+	private GeneralSelect deepCopySelect(GeneralSelect original) {
+		GeneralSelect copy = new GeneralSelect();
+		copy.setFetchColumns(new ArrayList<>(original.getFetchColumns()));
+		copy.setJoinList(new ArrayList<>(original.getJoinList()));
+		copy.setFromList(new ArrayList<>(original.getFromList()));
+		copy.setOrderByExpressions(new ArrayList<>(original.getOrderByExpressions()));
+		copy.setWhereClause(original.getWhereClause());
+		return copy;
+	}
+	
     @Override
     public QueryPoolEntry crossoverQueries(QueryPoolEntry entry1, QueryPoolEntry entry2, GeneralGlobalState globalState, int generation) throws Exception {
     	// TODO

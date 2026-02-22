@@ -26,4 +26,8 @@ public class NewBinaryOperatorNode<T> implements Node<T> {
         return right;
     }
 
+    public Operator getOp() {
+        return op;
+    }
+
 }

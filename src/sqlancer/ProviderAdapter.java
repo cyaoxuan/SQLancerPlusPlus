@@ -287,12 +287,11 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  			// GenesiSQL Step 2. Initialize query pool and HashMap to track unique queries
  			QueryPool queryPool = oracle.initialiseQueryPool(globalState);
  			Long totalExecutedQueries = 0L;
-// 			queryPool.printQueryPool();
 
  			// Outer loop: for each generation
  			for (int generation = 0; generation < globalState.getOptions().getGenesisqlGenerations(); generation++) {
- 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
- 				queryPool.printQueryPool();
+// 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
+// 				queryPool.printQueryPool();
  				if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
  					break;
  				}
@@ -337,19 +336,17 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  				for (int i = 0; i < populationSize / 10; i++) {
  					QueryPoolEntry query1 = queryPool.getRandomQueryPoolEntry();
  					QueryPoolEntry mutatedQuery = oracle.mutateQuery(query1, globalState, generation + 1);
- 					if (mutatedQuery != null) {
- 						entriesToAdd.add(mutatedQuery);
- 					}
+ 					entriesToAdd.add(mutatedQuery);
 
  					QueryPoolEntry query2 = queryPool.getRandomQueryPoolEntry();
  					QueryPoolEntry newQuery = oracle.crossoverQueries(query1, query2, globalState, generation + 1);
- 					if (newQuery != null) {
- 						entriesToAdd.add(newQuery);
- 					}
+ 					entriesToAdd.add(newQuery);
  				}
 
  				for (QueryPoolEntry e : entriesToAdd) {
- 					queryPool.addQueryPoolEntry(e);
+ 					if (e != null) {
+ 						queryPool.addQueryPoolEntry(e);
+ 					}
  				}
  			}
  		} finally {
