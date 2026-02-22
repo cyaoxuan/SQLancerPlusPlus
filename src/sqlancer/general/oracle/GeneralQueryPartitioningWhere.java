@@ -184,41 +184,9 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
         if (orderBy) {
             select.setOrderByExpressions(gen.generateOrderBys());
         }
+        select.setWhereClause(predicate);
         
-        // TLP WHERE specific logic
-        // Create original query with no WHERE clause
-        GeneralSelect originalQuery = new GeneralSelect();
-        originalQuery.setFetchColumns(select.getFetchColumns());
-        originalQuery.setJoinList(select.getJoinList());
-        originalQuery.setFromList(select.getFromList());
-        originalQuery.setOrderByExpressions(select.getOrderByExpressions());
-        originalQuery.setWhereClause(null);
-        
-        // First query with predicate
-        GeneralSelect firstQuery = new GeneralSelect();
-        firstQuery.setFetchColumns(select.getFetchColumns());
-        firstQuery.setJoinList(select.getJoinList());
-        firstQuery.setFromList(select.getFromList());
-        firstQuery.setOrderByExpressions(select.getOrderByExpressions());
-        firstQuery.setWhereClause(predicate);
-        
-        // Second query with negated predicate
-        GeneralSelect secondQuery = new GeneralSelect();
-        secondQuery.setFetchColumns(select.getFetchColumns());
-        secondQuery.setJoinList(select.getJoinList());
-        secondQuery.setFromList(select.getFromList());
-        secondQuery.setOrderByExpressions(select.getOrderByExpressions());
-        secondQuery.setWhereClause(negatedPredicate);
-        
-        // Third query with null predicate
-        GeneralSelect thirdQuery = new GeneralSelect();
-        thirdQuery.setFetchColumns(select.getFetchColumns());
-        thirdQuery.setJoinList(select.getJoinList());
-        thirdQuery.setFromList(select.getFromList());
-        thirdQuery.setOrderByExpressions(select.getOrderByExpressions());
-        thirdQuery.setWhereClause(isNullPredicate);
-        
-        return new QueryPoolEntry(originalQuery, firstQuery, secondQuery, thirdQuery, orderBy, errors, 0, generation);
+        return new QueryPoolEntry(select, errors, 0, generation);
     }
 
     @Override

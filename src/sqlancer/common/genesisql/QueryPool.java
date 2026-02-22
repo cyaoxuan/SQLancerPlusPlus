@@ -60,10 +60,12 @@ public class QueryPool {
 		if (this.queryPoolList.size() > n) {
 	        this.queryPoolList.subList(n, this.queryPoolList.size()).clear();
 	    }
-		
-		// Score decay to gradually kill off older queries :(
+	}
+	
+	// Score decay to gradually kill off older queries :(
+	public void decayFitnessScores() {
 		for (QueryPoolEntry entry : this.queryPoolList) {
-			entry.setFitnessScore(entry.getFitnessScore() - 2); // Can change decay value as needed, maybe it should be an option?
+			entry.setFitnessScore(entry.getFitnessScore() - 1); // Can change decay value as needed, maybe it should be an option?
 		}
 	}
 	

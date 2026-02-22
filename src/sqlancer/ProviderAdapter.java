@@ -1,6 +1,7 @@
 package sqlancer;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -328,21 +329,27 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  				// GenesiSQL Step 4. Selection
  				int populationSize = globalState.getOptions().getGenesisqlPopulationSize();
  				queryPool.selectTopNQueries(populationSize);
+ 				queryPool.decayFitnessScores();
 
  				// GenesiSQL Step 5. Crossover and Mutation, and Step 6. Re-insertion
  				// Arbitrary choice: increase population by up to 20% each generation
+ 				List<QueryPoolEntry> entriesToAdd = new ArrayList<>();
  				for (int i = 0; i < populationSize / 10; i++) {
  					QueryPoolEntry query1 = queryPool.getRandomQueryPoolEntry();
  					QueryPoolEntry mutatedQuery = oracle.mutateQuery(query1, globalState, generation + 1);
  					if (mutatedQuery != null) {
- 						queryPool.addQueryPoolEntry(mutatedQuery);
+ 						entriesToAdd.add(mutatedQuery);
  					}
 
  					QueryPoolEntry query2 = queryPool.getRandomQueryPoolEntry();
- 					QueryPoolEntry newQuery = oracle.crossoverQueries(query1,  query2, globalState, generation + 1);
+ 					QueryPoolEntry newQuery = oracle.crossoverQueries(query1, query2, globalState, generation + 1);
  					if (newQuery != null) {
- 						queryPool.addQueryPoolEntry(newQuery);
+ 						entriesToAdd.add(newQuery);
  					}
+ 				}
+
+ 				for (QueryPoolEntry e : entriesToAdd) {
+ 					queryPool.addQueryPoolEntry(e);
  				}
  			}
  		} finally {
