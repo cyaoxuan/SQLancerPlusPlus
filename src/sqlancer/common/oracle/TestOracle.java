@@ -33,4 +33,8 @@ public interface TestOracle<G extends GlobalState<?, ?, ?>> {
     default QueryPoolEntry crossoverQueries(QueryPoolEntry entry1, QueryPoolEntry entry2, G globalState, int generation) throws Exception {
     	throw new UnsupportedOperationException("crossoverQueries not implemented for this oracle");
     }
+
+    default QueryPoolEntry generateRandomQueryPoolEntry(G globalState, int generation) throws Exception {
+        throw new UnsupportedOperationException("generateRandomQueryPoolEntry not implemented for this oracle");
+    }
 }

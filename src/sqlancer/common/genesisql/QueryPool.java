@@ -46,15 +46,15 @@ public class QueryPool {
 		return queryPoolList.size();
 	}
 	
-	public void printQueryPool() {
-		for (int i = 0; i < queryPoolList.size(); i++) {
+	public void printQueryPool(int numEntries) {
+		for (int i = 0; i < numEntries; i++) {
 			System.out.println("Index: " + i + ", " + queryPoolList.get(i).toString());
 		}
 	}
 	
 	public void selectTopNQueries(int n) {
 		// Sort by descending fitness scores
-		this.queryPoolList.sort((a, b) -> Integer.compare(b.getFitnessScore(), a.getFitnessScore()));
+		this.queryPoolList.sort((a, b) -> Double.compare(b.getFitnessScore(), a.getFitnessScore()));
 		
 		// Remove everything after top N
 		if (this.queryPoolList.size() > n) {

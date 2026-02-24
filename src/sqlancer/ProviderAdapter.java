@@ -290,8 +290,8 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
 
  			// Outer loop: for each generation
  			for (int generation = 0; generation < globalState.getOptions().getGenesisqlGenerations(); generation++) {
-// 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
-// 				queryPool.printQueryPool();
+ 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
+ 				queryPool.printQueryPool(10);
  				if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
  					break;
  				}
@@ -330,7 +330,7 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  				queryPool.selectTopNQueries(populationSize);
  				queryPool.decayFitnessScores();
 
- 				// GenesiSQL Step 5. Crossover and Mutation, and Step 6. Re-insertion
+ 				// GenesiSQL Step 5. Crossover and Mutation
  				// Arbitrary choice: increase population by up to 20% each generation
  				List<QueryPoolEntry> entriesToAdd = new ArrayList<>();
  				for (int i = 0; i < populationSize / 10; i++) {
@@ -343,10 +343,19 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  					entriesToAdd.add(newQuery);
  				}
 
+ 				// GenesiSQL Step 6: Re-insertion
  				for (QueryPoolEntry e : entriesToAdd) {
  					if (e != null) {
  						queryPool.addQueryPoolEntry(e);
  					}
+ 				}
+ 				
+ 				// Temporary step 7: generate more random queries (done bc we don't have enough crossover/mutation yet, can remove later)
+ 				for (int i = 0; i < populationSize / 10; i++) {
+ 				    QueryPoolEntry randomQuery = oracle.generateRandomQueryPoolEntry(globalState, generation + 1);
+ 				    if (randomQuery != null) {
+ 				        queryPool.addQueryPoolEntry(randomQuery);
+ 				    }
  				}
  			}
  		} finally {

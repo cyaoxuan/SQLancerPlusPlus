@@ -16,7 +16,7 @@ public class QueryPoolEntry {
 	private final GeneralSelect secondQuery; // query with negated predicate
 	private final GeneralSelect thirdQuery; // query with nullified predicate
 	private final ExpectedErrors errors; // expected errors for this query
-	private int fitnessScore;
+	private double fitnessScore;
 	private final int generation;
 
 	/**
@@ -107,11 +107,11 @@ public class QueryPoolEntry {
 		return errors;
 	}
 
-	public int getFitnessScore() {
+	public double getFitnessScore() {
 		return fitnessScore;
 	}
 
-	public void setFitnessScore(int fitnessScore) {
+	public void setFitnessScore(double fitnessScore) {
 		this.fitnessScore = fitnessScore;
 	}
 

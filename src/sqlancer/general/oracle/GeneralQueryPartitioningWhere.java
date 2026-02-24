@@ -12,6 +12,7 @@ import sqlancer.common.ast.newast.Node;
 import sqlancer.common.ast.newast.TableReferenceNode;
 import sqlancer.common.genesisql.QueryPool;
 import sqlancer.common.genesisql.QueryPoolEntry;
+import sqlancer.common.genesisql.crossover.SimpleCrossJoinCrossover;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.general.GeneralErrorHandler.GeneratorNode;
 import sqlancer.general.GeneralErrors;
@@ -245,11 +246,11 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
         globalState.getHandler().appendScoreToTable(true, true, firstQueryString);
         
         // Calculate fitness score based on execution time and partitioning effectiveness
-        int fitnessScore = calculateFitnessScore(firstQueryExecutionTime, resultSet.size(), firstResultSet.size());
+        double fitnessScore = calculateFitnessScore(firstQueryExecutionTime, resultSet.size(), firstResultSet.size());
         entry.setFitnessScore(fitnessScore);
     }
     
-    private int calculateFitnessScore(long executionTimeMs, int originalResultSetSize, int firstQueryResultSetSize) {
+    private double calculateFitnessScore(long executionTimeMs, int originalResultSetSize, int firstQueryResultSetSize) {
     	// Vibecoded weights and calculations for now
         // Weight factors (these can be adjusted)
         final double EXECUTION_TIME_WEIGHT = 0.3; // Lower execution time is better
@@ -292,7 +293,7 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
         double totalScore = (executionTimeScore * EXECUTION_TIME_WEIGHT) + 
                            (partitioningScore * PARTITIONING_WEIGHT);
         
-        return (int) Math.round(totalScore);
+        return totalScore;
     }
     
     @Override
@@ -334,7 +335,32 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
 	
     @Override
     public QueryPoolEntry crossoverQueries(QueryPoolEntry entry1, QueryPoolEntry entry2, GeneralGlobalState globalState, int generation) throws Exception {
-    	// TODO
+    	// Use SimpleCrossJoinCrossover to combine two parent queries
+    	SimpleCrossJoinCrossover simpleCrossover = new SimpleCrossJoinCrossover();
+    	GeneralSelect offspringSelect = simpleCrossover.crossover(
+    		entry1.getFirstQuery(), 
+    		entry2.getFirstQuery(), 
+    		globalState
+    	);
+    	
+    	// If crossover failed, return null
+    	if (offspringSelect == null) {
+    		return null;
+    	}
+    	
+    	// Convert the offspring GeneralSelect to a QueryPoolEntry
+    	QueryPoolEntry offspring = new QueryPoolEntry(offspringSelect, entry1.getErrors(), 0, generation);
+    	
+    	// print parent and offspring queries for debugging
+//    	System.out.println("Parent 1: " + entry1);
+//    	System.out.println("Parent 2: " + entry2);
+//    	System.out.println("Offspring: " + offspring);
+    	
+    	return offspring;
+	}
+    
+    @Override
+    public QueryPoolEntry generateRandomQueryPoolEntry(GeneralGlobalState globalState, int generation) throws Exception {
     	return generateSelectStatement(generation);
 	}
 }
