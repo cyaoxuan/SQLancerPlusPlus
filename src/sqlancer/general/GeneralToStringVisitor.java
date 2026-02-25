@@ -2,6 +2,7 @@ package sqlancer.general;
 
 import sqlancer.common.ast.newast.NewToStringVisitor;
 import sqlancer.common.ast.newast.Node;
+import sqlancer.common.genesisql.crossover.ExistCrossover.ExistsExpression;
 import sqlancer.general.ast.GeneralCast;
 import sqlancer.general.ast.GeneralColumnReference;
 import sqlancer.general.ast.GeneralConstant;
@@ -26,6 +27,8 @@ public class GeneralToStringVisitor extends NewToStringVisitor<GeneralExpression
             visit((GeneralCast) expr);
         } else if (expr instanceof GeneralSubquery) {
             visit((GeneralSubquery) expr);
+        } else if (expr instanceof ExistsExpression) {
+            visit((ExistsExpression) expr);
         } else {
             throw new AssertionError(expr.getClass());
         }
@@ -122,6 +125,12 @@ public class GeneralToStringVisitor extends NewToStringVisitor<GeneralExpression
         sb.append(" AS ");
         sb.append(subquery.getName());
         sb.append(" ");
+    }
+
+    private void visit(ExistsExpression existsExpr) {
+        sb.append("EXISTS (");
+        visit(existsExpr.getSubquery());
+        sb.append(")");
     }
 
     public static String asString(Node<GeneralExpression> expr) {

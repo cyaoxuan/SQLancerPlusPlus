@@ -13,7 +13,9 @@ import sqlancer.common.ast.newast.TableReferenceNode;
 import sqlancer.common.genesisql.QueryPool;
 import sqlancer.common.genesisql.QueryPoolEntry;
 import sqlancer.common.genesisql.crossover.Crossover;
+import sqlancer.common.genesisql.crossover.ExistCrossover;
 import sqlancer.common.genesisql.crossover.SimpleCrossJoinCrossover;
+import sqlancer.common.genesisql.crossover.SwapWhereCrossover;
 import sqlancer.common.genesisql.mutation.AddCastMutation;
 import sqlancer.common.genesisql.mutation.AddNotMutation;
 import sqlancer.common.genesisql.mutation.BinaryOperatorMutation;
@@ -373,7 +375,11 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
 			);
 			
 			if (offspringSelect != null) {
-				return new QueryPoolEntry(offspringSelect, entry1.getErrors(), 0, generation);
+				QueryPoolEntry offspring = new QueryPoolEntry(offspringSelect, entry1.getErrors(), 0, generation);
+//				System.out.println("Parent 1:  " + entry1);
+//				System.out.println("Parent 2:  " + entry2);
+//				System.out.println("Offspring: " + offspring);
+				return offspring;
 			}
 		} catch (Exception e) {
 			return null;
@@ -391,6 +397,8 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
 	protected List<Crossover> getCrossovers() {
 		List<Crossover> crossovers = new ArrayList<>();
 		crossovers.add(new SimpleCrossJoinCrossover());
+		crossovers.add(new ExistCrossover());
+		crossovers.add(new SwapWhereCrossover());
 		// Add more crossovers here as they are implemented
 		return crossovers;
 	}
