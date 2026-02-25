@@ -14,8 +14,14 @@ import sqlancer.common.genesisql.QueryPool;
 import sqlancer.common.genesisql.QueryPoolEntry;
 import sqlancer.common.genesisql.crossover.Crossover;
 import sqlancer.common.genesisql.crossover.SimpleCrossJoinCrossover;
+import sqlancer.common.genesisql.mutation.AddCastMutation;
+import sqlancer.common.genesisql.mutation.AddNotMutation;
 import sqlancer.common.genesisql.mutation.BinaryOperatorMutation;
+import sqlancer.common.genesisql.mutation.ColumnMutation;
+import sqlancer.common.genesisql.mutation.DeletePartialPredicateMutation;
+import sqlancer.common.genesisql.mutation.LogicalOperatorMutation;
 import sqlancer.common.genesisql.mutation.Mutation;
+import sqlancer.common.genesisql.mutation.ValueMutation;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.general.GeneralErrorHandler.GeneratorNode;
 import sqlancer.general.GeneralErrors;
@@ -321,7 +327,10 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
 		}
 		
 		if (anyMutationApplied) {
-			return new QueryPoolEntry(mutatedFirstQuery, entry.getErrors(), 0, generation);
+			QueryPoolEntry mutatedQuery = new QueryPoolEntry(mutatedFirstQuery, entry.getErrors(), 0, generation);
+//			System.out.println("Original query: " + entry);
+//			System.out.println("Mutated query:  " + mutatedQuery);
+			return mutatedQuery;
 		}
 		
 		return null;
@@ -330,6 +339,12 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
 	protected List<Mutation> getMutations() {
 		List<Mutation> mutations = new ArrayList<>();
 		mutations.add(new BinaryOperatorMutation());
+		mutations.add(new LogicalOperatorMutation());
+		mutations.add(new ValueMutation());
+		mutations.add(new ColumnMutation());
+		mutations.add(new DeletePartialPredicateMutation());
+		mutations.add(new AddNotMutation());
+		mutations.add(new AddCastMutation());
 		// Add more mutations here as they are implemented
 		return mutations;
 	}
