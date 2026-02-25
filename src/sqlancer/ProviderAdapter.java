@@ -290,8 +290,8 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
 
  			// Outer loop: for each generation
  			for (int generation = 0; generation < globalState.getOptions().getGenesisqlGenerations(); generation++) {
- 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
- 				queryPool.printQueryPool(10);
+// 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
+// 				queryPool.printQueryPool(10);
  				if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
  					break;
  				}

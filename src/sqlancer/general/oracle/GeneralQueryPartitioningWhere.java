@@ -12,7 +12,10 @@ import sqlancer.common.ast.newast.Node;
 import sqlancer.common.ast.newast.TableReferenceNode;
 import sqlancer.common.genesisql.QueryPool;
 import sqlancer.common.genesisql.QueryPoolEntry;
+import sqlancer.common.genesisql.crossover.Crossover;
 import sqlancer.common.genesisql.crossover.SimpleCrossJoinCrossover;
+import sqlancer.common.genesisql.mutation.BinaryOperatorMutation;
+import sqlancer.common.genesisql.mutation.Mutation;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.general.GeneralErrorHandler.GeneratorNode;
 import sqlancer.general.GeneralErrors;
@@ -23,7 +26,6 @@ import sqlancer.general.ast.GeneralExpression;
 import sqlancer.general.ast.GeneralJoin;
 import sqlancer.general.ast.GeneralSelect;
 import sqlancer.general.gen.GeneralRandomQuerySynthesizer;
-import sqlancer.transformations.OperatorMutationTransformation;
 
 public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase {
     private Reproducer<GeneralGlobalState> reproducer;
@@ -298,31 +300,40 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
     
     @Override
 	public QueryPoolEntry mutateQuery(QueryPoolEntry entry, GeneralGlobalState globalState, int generation) throws Exception {
-		// Create a deep copy of the first query to avoid modifying the original
 		GeneralSelect mutatedFirstQuery = deepCopySelect(entry.getFirstQuery());
 		
-		// Apply operator mutation transformation to the WHERE clause
-		OperatorMutationTransformation mutation = new OperatorMutationTransformation();
-		mutation.setSelectStatement(mutatedFirstQuery);
-		mutation.apply();
+		List<Mutation> mutations = getMutations();
+		boolean anyMutationApplied = false;
 		
-		// If mutation was successfully applied, create and return a new QueryPoolEntry
-		if (mutation.isMutationApplied()) {
-//			System.out.println("Original: " + GeneralToStringVisitor.asString(entry.getFirstQuery()) + 
-//					"\nNew:      " + GeneralToStringVisitor.asString(mutatedFirstQuery));
+		// Apply each mutation with a certain probability
+		for (Mutation mutation : mutations) {
+			// Apply mutation with 50% probability
+			if (Randomly.getBoolean()) {
+				try {
+					boolean mutationApplied = mutation.mutate(mutatedFirstQuery);
+					if (mutationApplied) {
+						anyMutationApplied = true;
+					}
+				} catch (Exception e) {
+					continue;
+				}
+			}
+		}
+		
+		if (anyMutationApplied) {
 			return new QueryPoolEntry(mutatedFirstQuery, entry.getErrors(), 0, generation);
 		}
 		
 		return null;
 	}
 	
-	/**
-	 * Create a deep copy of a GeneralSelect statement to avoid modifying the original.
-	 * This copies all relevant fields including fetch columns, joins, tables, order by, and WHERE clause.
-	 * 
-	 * @param original The original GeneralSelect to copy
-	 * @return A new GeneralSelect with the same structure and clauses
-	 */
+	protected List<Mutation> getMutations() {
+		List<Mutation> mutations = new ArrayList<>();
+		mutations.add(new BinaryOperatorMutation());
+		// Add more mutations here as they are implemented
+		return mutations;
+	}
+	
 	private GeneralSelect deepCopySelect(GeneralSelect original) {
 		GeneralSelect copy = new GeneralSelect();
 		copy.setFetchColumns(new ArrayList<>(original.getFetchColumns()));
@@ -335,30 +346,40 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
 	
     @Override
     public QueryPoolEntry crossoverQueries(QueryPoolEntry entry1, QueryPoolEntry entry2, GeneralGlobalState globalState, int generation) throws Exception {
-    	// Use SimpleCrossJoinCrossover to combine two parent queries
-    	SimpleCrossJoinCrossover simpleCrossover = new SimpleCrossJoinCrossover();
-    	GeneralSelect offspringSelect = simpleCrossover.crossover(
-    		entry1.getFirstQuery(), 
-    		entry2.getFirstQuery(), 
-    		globalState
-    	);
+    	List<Crossover> crossovers = getCrossovers();
+    	// randomly get 1 crossover to apply
+    	Crossover crossover = Randomly.fromList(crossovers);
     	
-    	// If crossover failed, return null
-    	if (offspringSelect == null) {
-    		return null;
-    	}
-    	
-    	// Convert the offspring GeneralSelect to a QueryPoolEntry
-    	QueryPoolEntry offspring = new QueryPoolEntry(offspringSelect, entry1.getErrors(), 0, generation);
-    	
-    	// print parent and offspring queries for debugging
-//    	System.out.println("Parent 1: " + entry1);
-//    	System.out.println("Parent 2: " + entry2);
-//    	System.out.println("Offspring: " + offspring);
-    	
-    	return offspring;
+		try {
+			GeneralSelect offspringSelect = crossover.crossover(
+				entry1.getFirstQuery(),
+				entry2.getFirstQuery(),
+				globalState
+			);
+			
+			if (offspringSelect != null) {
+				return new QueryPoolEntry(offspringSelect, entry1.getErrors(), 0, generation);
+			}
+		} catch (Exception e) {
+			return null;
+		}
+		
+		return null;
 	}
-    
+	
+	/**
+	 * Get the list of available crossover strategies for this oracle.
+	 * Can be overridden in subclasses to provide different crossover strategies.
+	 * 
+	 * @return A list of Crossover objects to apply
+	 */
+	protected List<Crossover> getCrossovers() {
+		List<Crossover> crossovers = new ArrayList<>();
+		crossovers.add(new SimpleCrossJoinCrossover());
+		// Add more crossovers here as they are implemented
+		return crossovers;
+	}
+	
     @Override
     public QueryPoolEntry generateRandomQueryPoolEntry(GeneralGlobalState globalState, int generation) throws Exception {
     	return generateSelectStatement(generation);

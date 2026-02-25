@@ -1,93 +1,53 @@
-package sqlancer.transformations;
+package sqlancer.common.genesisql.mutation;
 
+import sqlancer.Randomly;
 import sqlancer.common.ast.newast.NewBinaryOperatorNode;
 import sqlancer.common.ast.newast.Node;
 import sqlancer.general.ast.GeneralBinaryComparisonOperator;
 import sqlancer.general.ast.GeneralExpression;
 import sqlancer.general.ast.GeneralSelect;
-import sqlancer.Randomly;
 
 /**
- * Transformation that mutates comparison operators in the WHERE clause of a SELECT statement.
+ * Mutation that mutates comparison operators in the WHERE clause of a SELECT statement.
  * For example, changes "=" to "<", ">" to "<=", etc.
  * 
- * This transformation operates directly on the AST without using JSQLParser,
+ * This mutation operates directly on the AST without using JSQLParser,
  * using a visitor pattern to traverse and mutate the expression tree.
  */
-public class OperatorMutationTransformation extends Transformation {
+public class BinaryOperatorMutation extends Mutation {
 
-    private GeneralSelect selectStatement;
-    private boolean mutationApplied;
-
-    public OperatorMutationTransformation() {
-        super("operator mutation in WHERE clause");
-    }
-
-    @Override
-    public boolean init(String sql) {
-        // This transformation works with GeneralSelect objects, not SQL strings
-        // The actual initialization is done via setSelectStatement()
-        this.current = sql;
-        return true;
+    public BinaryOperatorMutation() {
+        super("Operator Mutation - mutate comparison operators in WHERE clause");
     }
 
     /**
-     * Set the GeneralSelect statement to be transformed.
-     * This must be called instead of init() for this transformation.
+     * Mutate comparison operators in the WHERE clause of the given select statement.
+     * Modifies the select statement in place.
      * 
-     * @param select The GeneralSelect statement to transform
-     */
-    public void setSelectStatement(GeneralSelect select) {
-        this.selectStatement = select;
-        this.mutationApplied = false;
-    }
-
-    /**
-     * Apply operator mutation to the WHERE clause of the select statement.
-     * This method uses a visitor to traverse the WHERE clause expression tree
-     * and mutates comparison operators.
+     * @param select The GeneralSelect statement to mutate in place
+     * @return true if a mutation was applied, false otherwise
+     * @throws Exception If an error occurs during mutation
      */
     @Override
-    public void apply() {
-        if (selectStatement == null || selectStatement.getWhereClause() == null) {
-            isChanged = false;
-            return;
+    public boolean mutate(GeneralSelect select) throws Exception {
+        if (select == null || select.getWhereClause() == null) {
+            return false;
         }
 
         // Attempt to mutate the WHERE clause
         Node<GeneralExpression> originalWhereClause = 
-            (Node<GeneralExpression>) selectStatement.getWhereClause();
+            (Node<GeneralExpression>) select.getWhereClause();
         
         OperatorMutationVisitor visitor = new OperatorMutationVisitor();
         Node<GeneralExpression> mutatedWhereClause = visitor.visit(originalWhereClause);
 
         // Check if mutation was applied
         if (visitor.isMutationApplied()) {
-            selectStatement.setWhereClause(mutatedWhereClause);
-            isChanged = true;
-            mutationApplied = true;
-            onStatementChanged();
-        } else {
-            isChanged = false;
+            select.setWhereClause(mutatedWhereClause);
+            return true;
         }
-    }
-
-    @Override
-    protected void onStatementChanged() {
-        if (statementChangedHandler != null && selectStatement != null) {
-            // Convert the mutated GeneralSelect back to string representation
-            // This would be handled by GeneralToStringVisitor in the actual usage
-            statementChangedHandler.accept("WHERE clause mutated");
-        }
-    }
-
-    /**
-     * Check if a mutation was applied during the last apply() call.
-     * 
-     * @return true if a mutation was applied, false otherwise
-     */
-    public boolean isMutationApplied() {
-        return mutationApplied;
+        
+        return false;
     }
 
     /**
