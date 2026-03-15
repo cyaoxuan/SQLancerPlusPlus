@@ -288,8 +288,14 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  			QueryPool queryPool = oracle.initialiseQueryPool(globalState);
  			Long totalExecutedQueries = 0L;
 
+ 			final long RESET_TIMEOUT_MS = 15000;
+ 			long generationStartTime = System.currentTimeMillis();
  			// Outer loop: for each generation
  			for (int generation = 0; generation < globalState.getOptions().getGenesisqlGenerations(); generation++) {
+ 				if (System.currentTimeMillis() - generationStartTime > RESET_TIMEOUT_MS) {
+			      System.out.println("Execution exceeded 15 seconds at generation " + generation + ", resetting database and query pool...");
+			      break;
+ 				}
 // 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
 // 				queryPool.printQueryPool(10);
  				if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
@@ -334,11 +340,11 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  				// Arbitrary choice: increase population by up to 20% each generation
  				List<QueryPoolEntry> entriesToAdd = new ArrayList<>();
  				for (int i = 0; i < populationSize / 10; i++) {
- 					QueryPoolEntry query1 = queryPool.getRandomQueryPoolEntry();
+ 					QueryPoolEntry query1 = queryPool.selectParentByTournament();
  					QueryPoolEntry mutatedQuery = oracle.mutateQuery(query1, globalState, generation + 1);
  					entriesToAdd.add(mutatedQuery);
 
- 					QueryPoolEntry query2 = queryPool.getRandomQueryPoolEntry();
+ 					QueryPoolEntry query2 = queryPool.selectParentByTournament();
  					QueryPoolEntry newQuery = oracle.crossoverQueries(query1, query2, globalState, generation + 1);
  					entriesToAdd.add(newQuery);
  				}

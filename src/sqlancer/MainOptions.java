@@ -70,9 +70,9 @@ public class MainOptions {
 	private boolean enableGenesisql;
 
 	@Parameter(names = "--genesisql-pop-size", description = "The population size for the genetic algorithm")
-	private int genesisqlPopulationSize = 1000;
+	private int genesisqlPopulationSize = 500;
 
-	@Parameter(names = "--genetic-generations", description = "The number of generations to evolve")
+	@Parameter(names = "--genesisql-generations", description = "The number of generations to evolve")
 	private int genesisqlGenerations = 50;
 
     @Parameter(names = "--username", description = "The user name used to log into the DBMS")

@@ -67,7 +67,7 @@ public class QueryPool {
 	// Score decay to gradually kill off older queries :(
 	public void decayFitnessScores() {
 		for (QueryPoolEntry entry : this.queryPoolList) {
-			entry.setFitnessScore(entry.getFitnessScore() - 1); // Can change decay value as needed, maybe it should be an option?
+			entry.setFitnessScore(entry.getFitnessScore() - 1); // Can change decay value as needed
 		}
 	}
 	
@@ -81,6 +81,20 @@ public class QueryPool {
 		}
 		int index = (int) (Math.random() * queryPoolList.size());
 		return queryPoolList.get(index);
+	}
+	
+	public QueryPoolEntry selectParentByTournament() {
+		int tournamentSize = 4;
+		
+		QueryPoolEntry best = null;
+		for (int i = 0; i < tournamentSize; i++) {
+			QueryPoolEntry candidate = getRandomQueryPoolEntry();
+			if (best == null || candidate.getFitnessScore() > best.getFitnessScore()) {
+				best = candidate;
+			}
+		}
+		
+		return best;
 	}
 	
 	// For evaluation, but not used yet since we need to figure out how to extract query plans from the specific DBMS

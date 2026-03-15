@@ -13,7 +13,6 @@ import sqlancer.common.ast.newast.TableReferenceNode;
 import sqlancer.common.genesisql.QueryPool;
 import sqlancer.common.genesisql.QueryPoolEntry;
 import sqlancer.common.genesisql.crossover.Crossover;
-import sqlancer.common.genesisql.crossover.ExistCrossover;
 import sqlancer.common.genesisql.crossover.SimpleCrossJoinCrossover;
 import sqlancer.common.genesisql.crossover.SwapWhereCrossover;
 import sqlancer.common.genesisql.mutation.AddCastMutation;
@@ -397,7 +396,7 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
 	protected List<Crossover> getCrossovers() {
 		List<Crossover> crossovers = new ArrayList<>();
 		crossovers.add(new SimpleCrossJoinCrossover());
-		crossovers.add(new ExistCrossover());
+//		crossovers.add(new ExistCrossover());
 		crossovers.add(new SwapWhereCrossover());
 		// Add more crossovers here as they are implemented
 		return crossovers;
