@@ -290,44 +290,42 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
 
  			final long RESET_TIMEOUT_MS = 15000;
  			long generationStartTime = System.currentTimeMillis();
- 			// Outer loop: for each generation
- 			for (int generation = 0; generation < globalState.getOptions().getGenesisqlGenerations(); generation++) {
- 				if (System.currentTimeMillis() - generationStartTime > RESET_TIMEOUT_MS) {
-			      System.out.println("Execution exceeded 15 seconds at generation " + generation + ", resetting database and query pool...");
-			      break;
- 				}
+ 			int generation = 0;
+ 			// Outer loop: continues until 15 seconds elapsed
+ 			while (System.currentTimeMillis() - generationStartTime <= RESET_TIMEOUT_MS) {
 // 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
 // 				queryPool.printQueryPool(10);
- 				if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
- 					break;
- 				}
+				if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
+					break;
+				}
 
- 				// Inner loop: for each query in query pool
- 				// GenesiSQL Step 3. Fitness Evaluation (with oracle validation)
- 				for (QueryPoolEntry entry : queryPool.getQueryPoolList()) {
- 					if (entry.getGeneration() != generation) {
- 						continue; // Only evaluate new queries
- 					}
- 					
- 					if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
- 						break;
- 					}
+				// Inner loop: for each query in query pool
+				// GenesiSQL Step 3. Fitness Evaluation (with oracle validation)
+				for (QueryPoolEntry entry : queryPool.getQueryPoolList()) {
+					if (entry.getGeneration() != generation) {
+						continue; // Only evaluate new queries
+					}
+					
+					if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
+						break;
+					}
 
- 					try (OracleRunReproductionState localState = globalState.getState().createLocalState()) {
- 						assert localState != null;
- 						try {
- 							oracle.evaluateQueryFitnessAndOracleValidation(entry, globalState);
- 							totalExecutedQueries += 1;
- 							globalState.getManager().incrementSelectQueryCount();
- 							globalState.incrementSuccessCaseNum();
- 						} catch (IgnoreMeException ignored) {
- 						} catch (AssertionError e) {
- 							Reproducer<G> reproducer = oracle.getLastReproducer();
- 							if (reproducer != null) {
- 								throw e;
- 							}
- 						} 
- 						localState.executedWithoutError();
+					try (OracleRunReproductionState localState = globalState.getState().createLocalState()) {
+						assert localState != null;
+						try {
+							oracle.evaluateQueryFitnessAndOracleValidation(entry, globalState);
+							totalExecutedQueries += 1;
+							globalState.getManager().incrementSelectQueryCount();
+							globalState.incrementSuccessCaseNum();
+						} catch (IgnoreMeException ignored) {
+						} catch (AssertionError e) {
+							System.out.println("AssertionError at generation " + generation);
+							Reproducer<G> reproducer = oracle.getLastReproducer();
+							if (reproducer != null) {
+								throw e;
+							}
+						} 
+						localState.executedWithoutError();
  					}
  				}
 
@@ -363,7 +361,10 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  				        queryPool.addQueryPoolEntry(randomQuery);
  				    }
  				}
+ 				
+ 				generation++;
  			}
+ 			System.out.print(generation + " ");
  		} finally {
  			globalState.getConnection().close();
  		}

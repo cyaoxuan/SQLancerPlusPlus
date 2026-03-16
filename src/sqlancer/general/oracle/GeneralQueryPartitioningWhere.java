@@ -15,8 +15,6 @@ import sqlancer.common.genesisql.QueryPoolEntry;
 import sqlancer.common.genesisql.crossover.Crossover;
 import sqlancer.common.genesisql.crossover.SimpleCrossJoinCrossover;
 import sqlancer.common.genesisql.crossover.SwapWhereCrossover;
-import sqlancer.common.genesisql.mutation.AddCastMutation;
-import sqlancer.common.genesisql.mutation.AddNotMutation;
 import sqlancer.common.genesisql.mutation.BinaryOperatorMutation;
 import sqlancer.common.genesisql.mutation.ColumnMutation;
 import sqlancer.common.genesisql.mutation.DeletePartialPredicateMutation;
@@ -344,8 +342,8 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
 		mutations.add(new ValueMutation());
 		mutations.add(new ColumnMutation());
 		mutations.add(new DeletePartialPredicateMutation());
-		mutations.add(new AddNotMutation());
-		mutations.add(new AddCastMutation());
+//		mutations.add(new AddNotMutation());
+//		mutations.add(new AddCastMutation());
 		// Add more mutations here as they are implemented
 		return mutations;
 	}

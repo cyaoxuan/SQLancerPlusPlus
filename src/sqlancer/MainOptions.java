@@ -70,10 +70,7 @@ public class MainOptions {
 	private boolean enableGenesisql;
 
 	@Parameter(names = "--genesisql-pop-size", description = "The population size for the genetic algorithm")
-	private int genesisqlPopulationSize = 500;
-
-	@Parameter(names = "--genesisql-generations", description = "The number of generations to evolve")
-	private int genesisqlGenerations = 50;
+	private int genesisqlPopulationSize = 1000;
 
     @Parameter(names = "--username", description = "The user name used to log into the DBMS")
     private String userName = "sqlancer"; // NOPMD
@@ -239,11 +236,7 @@ public class MainOptions {
 	public int getGenesisqlPopulationSize() {
 		return genesisqlPopulationSize;
 	}
-
-	public int getGenesisqlGenerations() {
-		return genesisqlGenerations;
-	}
-
+	
     public int getNrQueries() {
         return nrQueries;
     }
