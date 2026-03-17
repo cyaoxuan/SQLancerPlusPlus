@@ -294,7 +294,7 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  			// Outer loop: continues until 15 seconds elapsed
  			while (System.currentTimeMillis() - generationStartTime <= RESET_TIMEOUT_MS) {
 // 				System.out.println("Generation " + generation + " with " + queryPool.size() + " queries in the pool.");
-// 				queryPool.printQueryPool(10);
+// 				queryPool.printQueryPool(3);
 				if (totalExecutedQueries >= globalState.getOptions().getNrQueries()) {
 					break;
 				}
@@ -352,14 +352,6 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
  					if (e != null) {
  						queryPool.addQueryPoolEntry(e);
  					}
- 				}
- 				
- 				// Temporary step 7: generate more random queries (done bc we don't have enough crossover/mutation yet, can remove later)
- 				for (int i = 0; i < populationSize / 10; i++) {
- 				    QueryPoolEntry randomQuery = oracle.generateRandomQueryPoolEntry(globalState, generation + 1);
- 				    if (randomQuery != null) {
- 				        queryPool.addQueryPoolEntry(randomQuery);
- 				    }
  				}
  				
  				generation++;
