@@ -252,17 +252,17 @@ public class GeneralQueryPartitioningWhere extends GeneralQueryPartitioningBase 
         }
         globalState.getHandler().appendScoreToTable(true, true, firstQueryString);
         
-        // Calculate fitness score based on execution time and partitioning effectiveness
-        double fitnessScore = calculateFitnessScore(firstQueryExecutionTime, resultSet.size(), firstResultSet.size());
+        // Calculate fitness score based on execution time, query length, and partitioning effectiveness
+        double fitnessScore = calculateFitnessScore(firstQueryExecutionTime, resultSet.size(), firstResultSet.size(), firstQueryString);
         entry.setFitnessScore(fitnessScore);
     }
     
-    private double calculateFitnessScore(long executionTimeMs, int originalResultSetSize, int firstQueryResultSetSize) {
+    private double calculateFitnessScore(long executionTimeMs, int originalResultSetSize, int firstQueryResultSetSize, String queryString) {
     	// Vibecoded weights and calculations for now
         // Weight factors (these can be adjusted)
         final double EXECUTION_TIME_WEIGHT = 0.3; // Lower execution time is better
         final double PARTITIONING_WEIGHT = 0.7; // Good partitioning is more important
-        final long MAX_ACCEPTABLE_EXECUTION_TIME_MS = 5000; // 5 seconds is considered "slow"
+        final long MAX_ACCEPTABLE_EXECUTION_TIME_MS = 100; // 100ms is considered "slow"
         
         // Calculate execution time score (0-100)
         // Lower execution time = higher score

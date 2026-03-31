@@ -5,7 +5,7 @@
   <groupId>com.sqlancer</groupId>
   <artifactId>sqlancer</artifactId>
   <version>2.0.0</version>
-  <name>SQLancer</name>
+  <name>SQLancerPlusPlus</name>
   <url>http://www.sqlancer.com/</url>
   <description>SQLancer finds logic bugs in Database Management Systems through automatic testing</description>
   <licenses>
@@ -315,7 +315,9 @@
     <dependency>
       <groupId>org.xerial</groupId>
       <artifactId>sqlite-jdbc</artifactId>
-      <version>3.40.0.0</version>
+      <version>3.28.0</version>
+      <!-- <version>3.40.0.0</version> -->
+      <!-- <version>3.51.3.0</version> -->
     </dependency>
     <dependency>
       <groupId>mysql</groupId>
@@ -336,6 +338,7 @@
       <groupId>org.duckdb</groupId>
       <artifactId>duckdb_jdbc</artifactId>
       <version>1.0.0</version>
+      <!-- <version>1.5.0</version> -->
     </dependency>
     <dependency>
       <groupId>com.facebook.presto</groupId>
@@ -367,6 +370,7 @@
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
       <version>2.1.214</version>
+      <!-- <version>2.4.240</version> -->
     </dependency>
     <dependency>
       <groupId>org.firebirdsql.jdbc</groupId>
